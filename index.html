@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3D Helmet Hardware Explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<style>
+html { font-size: 10px; }
+body { margin: 0; font-family: 'Google Sans', sans-serif; background-color: #222; overflow: hidden; }
+#inner-canvas { width: 100vw; height: 100vh; }
+
+/* Top Navigation */
+.topNavigation {
+position: absolute; top: 20px; left: 50%;
+transform: translateX(-50%); z-index: 12;
+background-color: rgba(237, 228, 218, 0.9); border-radius: 48px;
+padding: 12px 20px; display: flex; align-items: center; gap: 15px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+backdrop-filter: blur(5px);
+}
+.searchLable { font-size: 1.6rem; color: #525458; }
+.dropbtn {
+padding: 8px 16px; background: white; border-radius: 8px;
+border: 1px solid #ddd; cursor: pointer; font-size: 1.4rem; min-width: 180px;
+}
+
+/* Bottom Navigation */
+#bottomnavigation {
+position: absolute; bottom: 40px; width: 100%;
+display: flex; justify-content: center; align-items: center; gap: 20px;
+pointer-events: none;
+}
+.nav-group {
+background-color: rgba(226, 216, 205, 0.9); border-radius: 32px; padding: 9px;
+display: flex; align-items: center; gap: 8px; pointer-events: auto;
+}
+.arrows {
+width: 48px; height: 48px; border-radius: 50%; border: none;
+background: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.arrows svg { width: 14px; height: 14px; fill: #5F6368; }
+
+/* Colors */
+#colorIcons { display: flex; align-items: center; gap: 12px; margin-left: 10px; }
+.colors { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; display: flex; align-items: center; justify-content: center; }
+.colors.active { border-color: #4f607a; }
+.colorball { width: 18px; height: 18px; border-radius: 50%; }
+#colorText { font-size: 1.6rem; color: #555; width: 130px; margin-left: 10px; font-weight: 500; }
+</style>
+
+<script type="importmap">
+{
+"imports": {
+"three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+"three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}
+}
+</script>
+</head>
+<body>
+
+<div class="topNavigation">
+<span class="searchLable">Search: </span>
+<select id="componentDropdown" class="dropbtn">
+<option value="reset">Full Helmet View</option>
+<option value="visor">Front Visor</option>
+<option value="interior">Interior Padding</option>
+<option value="back">Rear Exhaust</option>
+<option value="top">Upper Vents</option>
+</select>
+</div>
+
+<div id="inner-canvas"></div>
+
+<div id="bottomnavigation">
+<div class="nav-group">
+<button class="arrows" id="rotateLeft"><svg viewBox="0 0 6 10"><path d="M5.5 0.6L4.3 0.6L0.5 4.4C0.2 4.7 0.2 5.3 0.5 5.6L4.3 9.4C4.6 9.7 5.2 9.7 5.5 9.4C5.8 9.1 5.8 8.6 5.5 8.2L2.3 5L5.5 1.8C5.8 1.4 5.8 0.9 5.5 0.6Z"/></svg></button>
+<button class="arrows" id="rotateRight"><svg viewBox="0 0 6 10"><path d="M0.5 0.6C0.2 0.9 0.2 1.4 0.5 1.8L3.7 5L0.5 8.2C0.2 8.6 0.2 9.1 0.5 9.4C0.8 9.7 1.3 9.7 1.7 9.4L5.5 5.6C5.8 5.3 5.8 4.7 5.5 4.4L1.7 0.6C1.4 0.3 0.8 0.3 0.5 0.6Z"/></svg></button>
+<button class="arrows" id="rotateUp"><svg viewBox="0 0 10 6"><path d="M4.4 0.5L0.6 4.3C0.3 4.6 0.3 5.2 0.6 5.5C0.9 5.8 1.4 5.8 1.8 5.5L5 2.3L8.2 5.5C8.6 5.8 9.1 5.8 9.4 5.5C9.7 5.2 9.7 4.6 9.4 4.3L5.6 0.5C5.3 0.2 4.7 0.2 4.4 0.5Z"/></svg></button>
+<button class="arrows" id="rotateDown"><svg viewBox="0 0 10 6"><path d="M8.2 0.5L5 3.7L1.8 0.5C1.4 0.2 0.9 0.2 0.6 0.5C0.3 0.8 0.3 1.3 0.6 1.7L4.4 5.5C4.7 5.8 5.3 5.8 5.6 5.5L9.4 1.7C9.7 1.3 9.7 0.8 9.4 0.5C9.1 0.2 8.6 0.2 8.2 0.5Z"/></svg></button>
+<button class="arrows" id="zoomButton">🔍</button>
+</div>
+
+<div class="nav-group">
+<div id="colorIcons">
+<div class="colors active" data-color="#ffffff" data-name="Original"><div class="colorball" style="background: #ffffff; border: 1px solid #999;"></div></div>
+<div class="colors" data-color="#ff4444" data-name="Crimson"><div class="colorball" style="background: #ff4444;"></div></div>
+<div class="colors" data-color="#44ff44" data-name="Acid Green"><div class="colorball" style="background: #44ff44;"></div></div>
+</div>
+<div id="colorText">Style: Original</div>
+</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.getElementById('inner-canvas').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+// Load Environment
+new RGBELoader().load('https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr', (tex) => {
+tex.mapping = THREE.EquirectangularReflectionMapping;
+scene.environment = tex;
+});
+
+let myModel;
+new GLTFLoader().load('https://threejs.org/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf', (gltf) => {
+myModel = gltf.scene;
+scene.add(myModel);
+});
+
+// --- Focus Logic ---
+document.getElementById('componentDropdown').addEventListener('change', (e) => {
+const val = e.target.value;
+const targets = {
+'reset': { x: 0, y: 0, z: 5 },
+'visor': { x: 0, y: 0, z: 2.5 },
+'interior': { x: 0, y: 0, z: -1.5 },
+'back': { x: 0, y: 0.5, z: -4 },
+'top': { x: 0, y: 3, z: 1 }
+};
+
+const pos = targets[val] || targets['reset'];
+
+controls.enabled = false;
+gsap.to(camera.position, {
+x: pos.x, y: pos.y, z: pos.z,
+duration: 1.5,
+ease: "power3.inOut",
+onUpdate: () => camera.lookAt(0, 0, 0),
+onComplete: () => {
+controls.enabled = true;
+controls.update();
+}
+});
+});
+
+// --- Arrow Controls ---
+function snapRotate(dir) {
+const sphere = new THREE.Spherical().setFromVector3(camera.position);
+const step = Math.PI / 2;
+
+if (dir === 'left') sphere.theta += step;
+if (dir === 'right') sphere.theta -= step;
+if (dir === 'up') { sphere.theta = 0; sphere.phi = Math.PI / 4; }
+if (dir === 'down') { sphere.theta = 0; sphere.phi = (3 * Math.PI) / 4; }
+
+sphere.theta = Math.round(sphere.theta / step) * step;
+
+const target = new THREE.Vector3().setFromSpherical(sphere);
+controls.enabled = false;
+gsap.to(camera.position, {
+x: target.x, y: target.y, z: target.z,
+duration: 0.8,
+ease: "power2.inOut",
+onUpdate: () => camera.lookAt(0, 0, 0),
+onComplete: () => {
+controls.enabled = true;
+controls.update();
+}
+});
+}
+
+document.getElementById('rotateLeft').onclick = () => snapRotate('left');
+document.getElementById('rotateRight').onclick = () => snapRotate('right');
+document.getElementById('rotateUp').onclick = () => snapRotate('up');
+document.getElementById('rotateDown').onclick = () => snapRotate('down');
+
+// --- Color Swapping ---
+document.querySelectorAll('.colors').forEach(btn => {
+btn.onclick = () => {
+const color = btn.getAttribute('data-color');
+document.querySelectorAll('.colors').forEach(c => c.classList.remove('active'));
+btn.classList.add('active');
+document.getElementById('colorText').innerText = `Style: ${btn.getAttribute('data-name')}`;
+if (myModel) {
+myModel.traverse(c => {
+if (c.isMesh) {
+gsap.to(c.material.color, {
+r: new THREE.Color(color).r,
+g: new THREE.Color(color).g,
+b: new THREE.Color(color).b,
+duration: 0.5
+});
+}
+});
+}
+};
+});
+
+// --- Zoom ---
+let isZoomed = false;
+document.getElementById('zoomButton').onclick = () => {
+isZoomed = !isZoomed;
+gsap.to(camera, { fov: isZoomed ? 20 : 45, duration: 1, onUpdate: () => camera.updateProjectionMatrix() });
+};
+
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate() {
+requestAnimationFrame(animate);
+controls.update();
+renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
